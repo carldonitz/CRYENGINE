@@ -12,6 +12,9 @@
 
 CSceneRenderPass::CSceneRenderPass()
 	: m_passFlags(ePassFlags_None)
+	, m_depthConstBias(0.0f)
+	, m_depthSlopeBias(0.0f)
+	, m_depthBiasClamp(0.0f)
 {
 	m_pDepthTarget = nullptr;
 	m_pResourceLayout = nullptr;
@@ -22,13 +25,16 @@ CSceneRenderPass::CSceneRenderPass()
 		m_pColorTargets[i] = nullptr;
 }
 
-void CSceneRenderPass::SetupPassContext(uint32 stageID, uint32 stagePassID, EShaderTechniqueID technique, uint32 filter, ERenderListID renderList)
+void CSceneRenderPass::SetupPassContext(uint32 stageID, uint32 stagePassID, EShaderTechniqueID technique, uint32 filter, ERenderListID renderList, uint32 excludeFilter, bool drawCompiledRenderObject)
 {
-	assert(stageID < MAX_PIPELINE_SCENE_STAGES);
+	// the scene render passes which draw CCompiledRenderObject must follow the strict rule of PSOs array and PSO cache in CCompiledRenderObject
+	const bool drawable = (drawCompiledRenderObject && stageID < MAX_PIPELINE_SCENE_STAGES) || !drawCompiledRenderObject;
+	assert(drawable);
 	m_stageID = stageID;
 	m_passID = stagePassID;
 	m_technique = technique;
-	m_batchFilter = filter;
+	m_batchFilter = drawable ? filter : 0;
+	m_excludeFilter = excludeFilter;
 	m_renderList = renderList;
 }
 
@@ -68,6 +74,13 @@ void CSceneRenderPass::SetViewport(const D3DViewPort& viewport)
 	};
 
 	m_scissorRect = scissorRect;
+}
+
+void CSceneRenderPass::SetDepthBias(float constBias, float slopeBias, float biasClamp)
+{ 
+	m_depthConstBias = constBias; 
+	m_depthSlopeBias = slopeBias; 
+	m_depthBiasClamp = biasClamp; 
 }
 
 void CSceneRenderPass::ExchangeRenderTarget(uint32 slot, CTexture* pNewColorTarget)
@@ -125,13 +138,12 @@ void CSceneRenderPass::DrawRenderItems_GP2(SGraphicsPipelinePassContext& passCon
 	SRenderPipeline& RESTRICT_REFERENCE rRP = rd->m_RP;
 
 	CDeviceCommandListPtr pCommandList = CCryDeviceWrapper::GetObjectFactory().GetCoreCommandList();
-	CDeviceGraphicsCommandInterface* pCommandInterface = pCommandList->GetGraphicsInterface();
+	passContext.pCommandList = pCommandList.get();
 
 	PrepareRenderPassForUse(*pCommandList);
 	BeginRenderPass(*pCommandList, passContext.renderNearest);
 
 	auto& renderItems = passContext.pRenderView->GetRenderItems(rRP.m_nPassGroupID);
-	const uint32 drawParamsIndex = (passContext.pRenderView->GetType() == CRenderView::eViewType_Shadow) ? 1 : 0;
 
 	CShader* pShader = NULL;
 	CShaderResources* pRes = NULL;
@@ -146,8 +158,11 @@ void CSceneRenderPass::DrawRenderItems_GP2(SGraphicsPipelinePassContext& passCon
 		if (!(ri.nBatchFlags & passContext.batchFilter))
 			continue;
 
+		if (ri.nBatchFlags & passContext.batchExcludeFilter)
+			continue;
+
 		CRenderObject* pObject = ri.pObj;
-		CRendElementBase* pRE = ri.pElem;
+		CRenderElement* pRE = ri.pElem;
 
 		SRendItem::mfGet(ri.SortVal, nTech, pShader, pRes);
 
@@ -169,12 +184,9 @@ void CSceneRenderPass::DrawRenderItems_GP2(SGraphicsPipelinePassContext& passCon
 		compiledObject.Init(shaderItem, pRE);
 
 		pObject->m_bInstanceDataDirty = false;  // Enforce recompilation of entire object
-		if (compiledObject.Compile(pObject, rRP.m_TI[rRP.m_nProcessThreadID].m_RealTime))
+		if (compiledObject.Compile(pObject))
 		{
-			if (!compiledObject.DrawVerification(passContext))
-				continue;
-
-			compiledObject.DrawToCommandList(*pCommandInterface, compiledObject.m_pso[passContext.stageID][passContext.passID], drawParamsIndex);
+			compiledObject.DrawToCommandList(passContext);
 		}
 	}
 
@@ -218,6 +230,10 @@ void CSceneRenderPass::BeginRenderPass(CDeviceCommandListRef RESTRICT_REFERENCE 
 	pCommandInterface->SetScissorRects(1, &m_scissorRect);
 	pCommandInterface->SetResourceLayout(m_pResourceLayout.get());
 	pCommandInterface->SetResources(EResourceLayoutSlot_PerPassRS, m_pPerPassResources.get(), EShaderStage_AllWithoutCompute);
+
+#if !defined(CRY_USE_DX12)
+	pCommandInterface->SetDepthBias(m_depthConstBias, m_depthSlopeBias, m_depthBiasClamp);
+#endif
 }
 
 void CSceneRenderPass::EndRenderPass(CDeviceCommandListRef RESTRICT_REFERENCE commandList, bool bNearest) const
@@ -226,6 +242,10 @@ void CSceneRenderPass::EndRenderPass(CDeviceCommandListRef RESTRICT_REFERENCE co
 
 	CDeviceGraphicsCommandInterface* pCommandInterface = commandList.GetGraphicsInterface();
 	pCommandInterface->EndProfilerEvent(m_szLabel);
+
+#if !defined(CRY_USE_DX12)
+	pCommandInterface->SetDepthBias(0.0f, 0.0f, 0.0f);
+#endif
 
 #if defined(ENABLE_PROFILING_CODE)
 	gcpRendD3D->AddRecordedProfilingStats(commandList.EndProfilingSection(), m_renderList);
@@ -242,7 +262,7 @@ void CSceneRenderPass::DrawRenderItems(CRenderView* pRenderView, ERenderListID l
 	if (m_batchFilter != FB_MASK && !(nBatchFlags & m_batchFilter))
 		return;
 
-	SGraphicsPipelinePassContext passContext(pRenderView, this, m_technique, m_batchFilter);
+	SGraphicsPipelinePassContext passContext(pRenderView, this, m_technique, m_batchFilter, m_excludeFilter);
 
 	passContext.nProcessThreadID = rp.m_nProcessThreadID;
 	passContext.nFrameID = rp.m_TI[rp.m_nProcessThreadID].m_nFrameID;

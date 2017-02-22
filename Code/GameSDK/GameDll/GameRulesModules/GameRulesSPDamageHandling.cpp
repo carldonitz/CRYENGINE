@@ -196,6 +196,13 @@ void CGameRulesSPDamageHandling::Init( XmlNodeRef xml )
 	m_invulnerableFilter.Init();
 }
 
+int g_collCount = 0;
+int CollisionFilter(const EventPhysCollision *pEvent)
+{
+	if (max(pEvent->pEntity[0]->GetType(), pEvent->pEntity[1]->GetType()) > PE_RIGID)
+		return 1;
+	return ++g_collCount <= g_pGameCVars->g_MaxSimpleCollisions;
+}
 
 void CGameRulesSPDamageHandling::Update(float frameTime)
 {
@@ -226,6 +233,12 @@ void CGameRulesSPDamageHandling::Update(float frameTime)
 			}
 		}
 	}
+
+	g_collCount = 0;
+	if (g_pGameCVars->g_DisableCollisionDamage)
+		gEnv->pPhysicalWorld->AddEventClient(EventPhysCollision::id, (int(*)(const EventPhys*))CollisionFilter, 1, 10.0f);
+	else
+		gEnv->pPhysicalWorld->RemoveEventClient(EventPhysCollision::id, (int(*)(const EventPhys*))CollisionFilter, 1);
 
 #ifndef _RELEASE
 	if (g_pGameCVars->g_debugFakeHits)
@@ -262,7 +275,7 @@ void CGameRulesSPDamageHandling::DrawFakeHits(float frameTime)
 	if (highestAlpha > 0.001f)
 	{
 		float color[4] = { 0.85f, 0.0f, 0.0f, std::min(highestAlpha, 1.0f) };
-		gEnv->pRenderer->Draw2dLabel(1024.0f * 0.5f, 500.0f, 2.45f, color, true, "FAKE HIT!");
+		IRenderAuxText::Draw2dLabel(1024.0f * 0.5f, 500.0f, 2.45f, color, true, "FAKE HIT!");
 	}
 }
 #endif
@@ -452,7 +465,7 @@ bool CGameRulesSPDamageHandling::SvOnHitScaled(const HitInfo& hitInfo)
 					if (aiActor && shooter != pVictimEntity && !aiActor->CanDamageTarget(pVictimEntity->GetAI()))
 					{
 #ifndef _RELEASE
-						if (pVictimEntity->GetId() == gEnv->pGame->GetIGameFramework()->GetClientActorId())
+						if (pVictimEntity->GetId() == gEnv->pGameFramework->GetClientActorId())
 							m_fakeHits.push_back(FakeHitDebug(gEnv->pTimer->GetFrameStartTime()));
 #endif
 						modifiedHitInfo.damage = 1.0f;

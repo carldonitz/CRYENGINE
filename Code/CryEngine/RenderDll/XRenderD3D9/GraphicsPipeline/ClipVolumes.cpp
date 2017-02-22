@@ -44,8 +44,7 @@ void CClipVolumesStage::Init()
 	{
 		// Stencil pass: two primitives per clip volume, both share the same constant buffer
 		{
-			CConstantBufferPtr pCB;
-			pCB.Assign_NoAddRef(gcpRendD3D->m_DevBufMan.CreateConstantBuffer(sizeof(SPrimitiveConstants)));
+			CConstantBufferPtr pCB = gcpRendD3D->m_DevBufMan.CreateConstantBuffer(sizeof(SPrimitiveConstants));
 
 			m_stencilPrimitives[2 * i + 0].SetInlineConstantBuffer(eConstantBufferShaderSlot_PerBatch, pCB, EShaderStage_Vertex);
 			m_stencilPrimitives[2 * i + 1].SetInlineConstantBuffer(eConstantBufferShaderSlot_PerBatch, pCB, EShaderStage_Vertex);
@@ -53,8 +52,7 @@ void CClipVolumesStage::Init()
 
 		// Blend values pass: one primitive per clip volume, shared CB for vertex and pixel shader
 		{
-			CConstantBufferPtr pCB;
-			pCB.Assign_NoAddRef(gcpRendD3D->m_DevBufMan.CreateConstantBuffer(sizeof(SPrimitiveConstants)));
+			CConstantBufferPtr pCB = gcpRendD3D->m_DevBufMan.CreateConstantBuffer(sizeof(SPrimitiveConstants));
 
 			m_blendPrimitives[i].SetInlineConstantBuffer(eConstantBufferShaderSlot_PerBatch, pCB, EShaderStage_Pixel | EShaderStage_Vertex);
 		}
@@ -177,8 +175,6 @@ void CClipVolumesStage::Prepare(CRenderView* pRenderView)
 
 			if (pRenderMesh = reinterpret_cast<CRenderMesh*>(volume.m_pRenderMesh.get()))
 			{
-				pRenderMesh->CheckUpdate(pRenderMesh->_GetVertexFormat(), 0);
-
 				hVertexStream = pRenderMesh->_GetVBStream(VSF_GENERAL);
 				hIndexStream = pRenderMesh->_GetIBStream();
 
@@ -473,7 +469,7 @@ void CClipVolumesStage::ExecuteVolumetricFog()
 
 				static CCryNameR paramDepth("ParamDepth");
 				const Vec4 vParamDepth(static_cast<float>(i), factor1, factor0, nearDepth);
-				m_passWriteJitteredDepth.SetConstant(eHWSC_Pixel, paramDepth, vParamDepth);
+				m_passWriteJitteredDepth.SetConstant(paramDepth, vParamDepth, eHWSC_Pixel);
 
 				m_passWriteJitteredDepth.Execute();
 			}

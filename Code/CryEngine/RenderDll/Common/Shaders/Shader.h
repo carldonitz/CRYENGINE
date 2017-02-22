@@ -19,7 +19,7 @@
 
 // bump this value up if you want to invalidate shader cache (e.g. changed some code or .ext file)
 // #### VIP NOTE ####: DON'T USE MORE THAN ONE DECIMAL PLACE!!!! else it doesn't work...
-#define FX_CACHE_VER     9.5
+#define FX_CACHE_VER     9.8
 #define FX_SER_CACHE_VER 1.0    // Shader serialization version (FX_CACHE_VER + FX_SER_CACHE_VER)
 
 // Maximum 1 digit here
@@ -33,10 +33,7 @@
 
 #define CB_PER_BATCH        0
 #define CB_PER_INSTANCE     1
-#define CB_PER_FRAME        2
 #define CB_PER_MATERIAL     3
-#define CB_PER_LIGHT        4
-#define CB_PER_SHADOWGEN    5
 #define CB_SKIN_DATA        6
 #define CB_INSTANCE_DATA    7
 #define CB_NUM              8
@@ -62,7 +59,7 @@
 
 struct SShaderPass;
 class CShader;
-class CRendElementBase;
+class CRenderElement;
 class CResFile;
 struct SEnvTexture;
 struct SParserFrame;
@@ -613,7 +610,6 @@ enum EHWSRMaskBit
 	HWSR_DECAL_TEXGEN_2D,
 
 	HWSR_SHADOW_MIXED_MAP_G16R16,
-	HWSR_GSM_COMBINED,
 	HWSR_HW_PCF_COMPARE,
 	HWSR_SHADOW_JITTERING,
 	HWSR_POINT_LIGHT,
@@ -640,6 +636,7 @@ enum EHWSRMaskBit
 	HWSR_VOLUMETRIC_FOG,
 
 	HWSR_REVERSE_DEPTH,
+
 	HWSR_MAX
 };
 
@@ -1043,7 +1040,7 @@ struct SShaderTechnique
 	int                       m_Flags;     // Different flags (FHF_)
 	uint32                    m_nPreprocessFlags;
 	int8                      m_nTechnique[TTYPE_MAX]; // Next technique in sequence
-	TArray<CRendElementBase*> m_REs;                   // List of all render elements registered in the shader
+	TArray<CRenderElement*> m_REs;                   // List of all render elements registered in the shader
 	TArray<SHRenderTarget*>   m_RTargets;
 	float                     m_fProfileTime;
 
@@ -1120,7 +1117,7 @@ struct SShaderTechnique
 		}
 		for (uint32 i = 0; i < m_REs.Num(); i++)
 		{
-			CRendElementBase* pRE = m_REs[i];
+			CRenderElement* pRE = m_REs[i];
 			pRE->Release(false);
 		}
 		m_REs.Free();
@@ -1274,7 +1271,7 @@ public:
 		SShaderTechnique* pTech = m_HWTechniques[nTechnique];
 		return pTech->m_nTechnique[nRegisteredTechnique];
 	}
-	virtual TArray<CRendElementBase*>* GetREs(int nTech)
+	virtual TArray<CRenderElement*>* GetREs(int nTech)
 	{
 		if (nTech < 0)
 			nTech = 0;

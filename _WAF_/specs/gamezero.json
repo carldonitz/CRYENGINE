@@ -6,8 +6,7 @@
 
 	"game_projects"                         : "GameZero",
 
-	"module_extensions"                     : ["scaleform"],
-	"win_module_extensions"                 : ["audio_fmod", "brofiler", "openvr", "osvr", "eyex", "mono"],
+	"win_module_extensions"                 : ["audio_fmod", "brofiler", "eyex", "mono"],
 
 	"modules" :
 	[
@@ -20,7 +19,6 @@
 		"CryEntitySystem",
 		"CryFont",
 		"CryInput",
-		"CryLobby",
 		"CryMovie",
 		"CryNetwork",
 		"CryParticleSystem",
@@ -32,7 +30,12 @@
 		"CrySystem",
 		"CryScaleformHelper",
 		"CryAction",
+		"CrySchematycCore",
+		"CrySchematycSTDEnv",
+		"CrySensorSystem",
 		"HWScripts",
+		
+		"CryDefaultEntities",
 
 		"zlib",
 		"expat",
@@ -46,6 +49,9 @@
 		"yasli",
 		"tomcrypt",
 		"jsmn",
+		"png16",
+		"jpeg",
+		"curl",
 		
 		"CryGameZero"
 	],
@@ -64,7 +70,29 @@
 		"CryScaleformHelper"
 	],
 
-	"win_modules"                           : ["WindowsLauncher", "CryRenderD3D11", "CryRenderD3D12", "CryRenderOpenGL", "CryAudioImplSDLMixer", "CryAudioImplFmod", "CryAudioImplPortAudio", "oculus", "CryMonoBridge"],
+	"win_modules": [
+		"WindowsLauncher",
+		"CryRenderD3D11",
+		"CryRenderD3D12",
+		"CryRenderOpenGL",
+		"CryAudioImplSDLMixer",
+		"CryAudioImplFmod",
+		"CryAudioImplPortAudio",
+		"oculus",
+		"CryMonoBridge",
+		"CryUserAnalytics",
+		"libogg_dynamic",
+		"libogg_static",
+		"libvorbis_dynamic",
+		"libvorbis_static",
+		"libvorbisfile",
+		"native_midi",
+		"sdl_mixer_static",
+		"sdl_mixer_dynamic",
+		"smpeg",
+		"timidity"
+	],
+
 	"win_debug_modules"                     : ["DedicatedLauncher", "CryLiveCreate", "GameStream"],
 	"win_profile_modules"                   : ["DedicatedLauncher", "CryLiveCreate", "GameStream"],
 
@@ -77,7 +105,7 @@
 	"durango_performance_monolithic_build"  : "True",
 	"durango_release_monolithic_build"      : "True",
 
-	"orbis_modules"                         : [ "OrbisLauncher", "CryRenderD3D11" ],
+	"orbis_modules"                         : [ "OrbisLauncher", "CryRenderGNM" ],
 	"orbis_monolithic_build"                : "True",
 	"orbis_debug_modules"                   : ["CryLiveCreate"],
 	"orbis_profile_modules"                 : ["CryLiveCreate"],
@@ -86,6 +114,5 @@
 
 	"darwin_modules"                        : [ "MacLauncher", "CryRenderOpenGL" ],
 
-	"android_modules"                       : [ "AndroidLauncher", "CryRenderOpenGL" ],
-	"android_monolithic_build"              : "True"
+	"android_modules"                       : [ "AndroidLauncher", "CryRenderOpenGL" ]
 }
